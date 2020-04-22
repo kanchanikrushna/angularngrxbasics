@@ -1,3 +1,4 @@
+import { AppState } from './../state/models/AppStateExtention';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 
 import { Subscription } from 'rxjs';
@@ -5,6 +6,7 @@ import { Subscription } from 'rxjs';
 import { Product } from '../product';
 import { ProductService } from '../product.service';
 import { Store, select } from '@ngrx/store';
+import * as ProductStateSelectors from '../state/models/ProductSelector';
 
 @Component({
   selector: 'pm-product-list',
@@ -23,7 +25,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
   selectedProduct: Product | null;
   sub: Subscription;
 
-  constructor(private store: Store<any>,
+  constructor(private store: Store<AppState>,
     private productService: ProductService) { }
 
   ngOnInit(): void {
@@ -37,12 +39,9 @@ export class ProductListComponent implements OnInit, OnDestroy {
     });
 
     // TODO: Unsubscribe
-    this.store.pipe(select('products')).subscribe(
-      products=>{
-        if(products){
-          this.displayCode = products.showProductCode;
-        }
-    });
+    this.store.pipe(select(ProductStateSelectors.getShowProductCode)).subscribe(
+      showProductCode => this.displayCode = showProductCode
+    );
   }
 
   ngOnDestroy(): void {
@@ -51,7 +50,7 @@ export class ProductListComponent implements OnInit, OnDestroy {
 
   checkChanged(value: boolean): void {
     this.store.dispatch({
-      type:'TOGGLE_PRODUCT_CODE',
+      type: 'TOGGLE_PRODUCT_CODE',
       payload: value
     })
   }
