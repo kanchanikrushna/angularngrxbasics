@@ -1,12 +1,13 @@
 import { AppState } from './../state/models/AppStateExtention';
 import { Component, OnInit, OnDestroy } from '@angular/core';
 
-import { Subscription } from 'rxjs';
+import { Subscription, Observable } from 'rxjs';
 
 import { Product } from '../product';
 import { ProductService } from '../product.service';
 import { Store, select } from '@ngrx/store';
 import * as ProductStateSelectors from '../state/models/ProductSelector';
+import * as productActions from '../state/product.action';
 
 @Component({
   selector: 'pm-product-list',
@@ -15,7 +16,6 @@ import * as ProductStateSelectors from '../state/models/ProductSelector';
 })
 export class ProductListComponent implements OnInit, OnDestroy {
   pageTitle = 'Products';
-  errorMessage: string;
 
   displayCode: boolean;
 
@@ -23,20 +23,29 @@ export class ProductListComponent implements OnInit, OnDestroy {
 
   // Used to highlight the selected product in the list
   selectedProduct: Product | null;
-  sub: Subscription;
+  componentActive = true;
+  errorMessage$: Observable<string>;
 
   constructor(private store: Store<AppState>,
     private productService: ProductService) { }
 
   ngOnInit(): void {
-    this.sub = this.productService.selectedProductChanges$.subscribe(
-      selectedProduct => this.selectedProduct = selectedProduct
+   this.store.pipe(select(ProductStateSelectors.getCurrentProduct)).subscribe(
+      current => this.selectedProduct = current
     );
 
-    this.productService.getProducts().subscribe({
-      next: (products: Product[]) => this.products = products,
-      error: (err: any) => this.errorMessage = err.error
-    });
+
+    this.errorMessage$ = this.store.pipe(select(ProductStateSelectors.getError));
+    
+   this.store.dispatch(new productActions.Load());
+   this.store.pipe(select(ProductStateSelectors.getProducts)).subscribe(
+     (products: Product[]) => this.products = products
+   );
+
+    // this.productService.getProducts().subscribe({
+    //   next: (products: Product[]) => this.products = products,
+    //   error: (err: any) => this.errorMessage = err.error
+    // });
 
     // TODO: Unsubscribe
     this.store.pipe(select(ProductStateSelectors.getShowProductCode)).subscribe(
@@ -45,22 +54,21 @@ export class ProductListComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.sub.unsubscribe();
+    this.componentActive = false;
+
   }
 
   checkChanged(value: boolean): void {
-    this.store.dispatch({
-      type: 'TOGGLE_PRODUCT_CODE',
-      payload: value
-    })
+    this.store.dispatch(new productActions.ToggleProductCode(value));
   }
 
   newProduct(): void {
-    this.productService.changeSelectedProduct(this.productService.newProduct());
+   this.store.dispatch(new productActions.IntializeCurrentProduct());
+
   }
 
   productSelected(product: Product): void {
-    this.productService.changeSelectedProduct(product);
+   this.store.dispatch(new productActions.SetCurrentProduct(product));
   }
 
 }
